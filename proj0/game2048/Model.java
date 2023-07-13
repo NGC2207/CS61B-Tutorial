@@ -94,26 +94,54 @@ public class Model extends Observable {
         setChanged();
     }
 
-    /** Tilt the board toward SIDE. Return true iff this changes the board.
-     *
+    /**
+     * Tilt the board toward SIDE. Return true iff this changes the board.
+     * <p>
      * 1. If two Tile objects are adjacent in the direction of motion and have
-     *    the same value, they are merged into one Tile of twice the original
-     *    value and that new value is added to the score instance variable
+     * the same value, they are merged into one Tile of twice the original
+     * value and that new value is added to the score instance variable
      * 2. A tile that is the result of a merge will not merge again on that
-     *    tilt. So each move, every tile will only ever be part of at most one
-     *    merge (perhaps zero).
+     * tilt. So each move, every tile will only ever be part of at most one
+     * merge (perhaps zero).
      * 3. When three adjacent tiles in the direction of motion have the same
-     *    value, then the leading two tiles in the direction of motion merge,
-     *    and the trailing tile does not.
-     * */
+     * value, then the leading two tiles in the direction of motion merge,
+     * and the trailing tile does not.
+     */
+    private int nextNonNullRowOfTile(int col, int row) {
+        for (int index = row - 1; index >= 0; index--) {
+            if (board.tile(col, index) != null) {
+                return index;
+            }
+        }
+        return -1;
+    }
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
-
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
+        board.setViewingPerspective(side);
+        int size = board.size();
+        for (int col = 0; col < size; col++) {
+            for (int row = size - 1; row >= 0; row--) {
+                Tile tile = board.tile(col, row);
+                int nextIndex = nextNonNullRowOfTile(col,row);
+                if (nextIndex == -1) {
+                    break;
+                }
+                Tile nextTile = board.tile(col, nextIndex);
+                if (tile == null || tile.value() == nextTile.value()) {
+                    changed = true;
+                    if (board.move(col, row, nextTile)) {
+                        score += 2 * nextTile.value();
+                    } else {
+                        row++;
+                    }
+                }
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);
         checkGameOver();
         if (changed) {
             setChanged();
@@ -138,6 +166,14 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int col = 0; col < size; col++) {
+            for (int row = 0; row < size; row++) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +184,15 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int col = 0; col < size; col++) {
+            for (int row = 0; row < size; row++) {
+                int tileValue = b.tile(col, row) != null ? b.tile(col, row).value() : 0;
+                if (tileValue == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -159,6 +204,37 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if (emptySpaceExists(b)) {
+            return true;
+        }
+        int size = b.size();
+        int index = size - 1;
+        for (int col = 0; col < size; col++) {
+            if (col != index) {
+                for (int row = 0; row < size; row++) {
+                    if (row != index) {
+                        int currentTile = b.tile(col, row).value();
+                        int rightTile = b.tile(col + 1, row).value();
+                        int bottomTile = b.tile(col, row + 1).value();
+                        if (currentTile == rightTile || currentTile == bottomTile) {
+                            return true;
+                        }
+                    } else {
+                        for (int temp = 0; temp < size - 1; temp++) {
+                            if (b.tile(temp, row).value() == b.tile(temp + 1, row).value()) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                for (int temp = 0; temp < size - 1; temp++) {
+                    if (b.tile(col, temp).value() == b.tile(col, temp + 1).value()) {
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 
